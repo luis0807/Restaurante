@@ -4,4 +4,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; // <-- Certifique-se de que essa linha existe no final!
+export default Dashboard; 

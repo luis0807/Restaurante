@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Importamos o controle remoto de rotas
 import logoImg from '../assets/logo.png';
 import '../App.css';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
+    
     if (email === 'admin@restaurante.com' && password === 'admin123') {
-      alert('Login feito com sucesso!');
+      navigate('/');
     } else {
-      alert('Usuário ou senha incorretos.');
+      alert('Usuário ou senha incorretos!');
     }
   };
 
@@ -19,7 +23,6 @@ function Login() {
     <div className="login-container">
       <div className="login-card">
         
-        {/* Container da Imagem da Logo */}
         <div className="logo-container-sistema">
           <img src={logoImg} alt="Logo Varanda do Nazo" className="sistema-logo" />
         </div>
