@@ -45,6 +45,16 @@ function App() {
             </ProtectedRoute>
           } 
         />
+
+        {/* Rota administrativa protegida de gerenciamento de pedidos dentro do Dashboard */}
+        <Route 
+          path="/pedidos" 
+          element={
+            <ProtectedRoute>
+              <Dashboard activeTab="pedidos" />
+            </ProtectedRoute>
+          } 
+        />
  
         {/* Rota raiz do dashboard original (Protegida) */}
         <Route 

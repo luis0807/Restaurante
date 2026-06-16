@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { conectarBanco } from './db.js';
 import { ReservaRepositorio } from './repositorios/ReservaRepositorio.js';
 import { MesaRepositorio } from './repositorios/MesaRepositorio.js';
+import { PedidoRepositorio } from './repositorios/PedidoRepositorio.js';
 
 // Carrega as variáveis de ambiente
 dotenv.config();
@@ -14,6 +15,7 @@ const PORTA = process.env.PORT || 5001;
 // Instanciação dos repositórios NoSQL de backend
 const repositorioReservas = new ReservaRepositorio();
 const repositorioMesas = new MesaRepositorio();
+const repositorioPedidos = new PedidoRepositorio();
 
 // Middlewares
 app.use(cors());
@@ -84,6 +86,75 @@ app.post('/api/mesas', async (req, res) => {
   } catch (erro) {
     console.error('Erro ao salvar mesas:', erro.message);
     res.status(500).json({ erro: 'Erro interno ao salvar mesas.' });
+  }
+});
+
+/**
+ * @route GET /api/pedidos
+ * @description Retorna a lista de todos os pedidos no BD, ordenados por data de abertura.
+ */
+app.get('/api/pedidos', async (req, res) => {
+  try {
+    const pedidos = await repositorioPedidos.obterTodosPedidos();
+    res.json(pedidos);
+  } catch (erro) {
+    console.error('Erro ao buscar pedidos:', erro.message);
+    res.status(500).json({ erro: 'Erro interno ao carregar pedidos.' });
+  }
+});
+
+/**
+ * @route POST /api/pedidos
+ * @description Cria um novo pedido.
+ */
+app.post('/api/pedidos', async (req, res) => {
+  try {
+    const dados = req.body;
+    if (!dados.id || !dados.mesaNumero || !dados.clienteNome) {
+      return res.status(400).json({ erro: 'Campos obrigatórios ausentes: id, mesaNumero, clienteNome.' });
+    }
+    const novoPedido = await repositorioPedidos.criarPedido(dados);
+    res.status(201).json(novoPedido);
+  } catch (erro) {
+    console.error('Erro ao criar pedido:', erro.message);
+    res.status(500).json({ erro: 'Erro interno ao criar pedido.' });
+  }
+});
+
+/**
+ * @route PATCH /api/pedidos/:id
+ * @description Atualiza campos específicos de um pedido existente.
+ */
+app.patch('/api/pedidos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dadosAtualizados = req.body;
+    const atualizado = await repositorioPedidos.atualizarPedido(id, dadosAtualizados);
+    if (!atualizado) {
+      return res.status(404).json({ erro: `Pedido com ID "${id}" não encontrado.` });
+    }
+    res.json({ sucesso: true, mensagem: `Pedido ${id} atualizado com sucesso.` });
+  } catch (erro) {
+    console.error('Erro ao atualizar pedido:', erro.message);
+    res.status(500).json({ erro: 'Erro interno ao atualizar pedido.' });
+  }
+});
+
+/**
+ * @route DELETE /api/pedidos/:id
+ * @description Remove um pedido pelo seu código identificador.
+ */
+app.delete('/api/pedidos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const excluido = await repositorioPedidos.excluirPedido(id);
+    if (!excluido) {
+      return res.status(404).json({ erro: `Pedido com ID "${id}" não encontrado.` });
+    }
+    res.json({ sucesso: true, mensagem: `Pedido ${id} excluído com sucesso.` });
+  } catch (erro) {
+    console.error('Erro ao excluir pedido:', erro.message);
+    res.status(500).json({ erro: 'Erro interno ao excluir pedido.' });
   }
 });
 

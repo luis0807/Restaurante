@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import GerenciadorReservas from '../components/GerenciadorReservas';
+import GerenciadorPedidos from '../components/GerenciadorPedidos';
 import { ReservaServico } from '../servicos/ReservaServico';
 
 const servicoReservas = new ReservaServico();
@@ -10,7 +11,7 @@ const servicoReservas = new ReservaServico();
  * @function Dashboard
  * @description Componente do painel administrativo do restaurante.
  * @param {Object} props - Propriedades do componente.
- * @param {string} [props.activeTab='dashboard'] - A aba ativa ('dashboard' ou 'reservas').
+ * @param {string} [props.activeTab='dashboard'] - A aba ativa ('dashboard', 'reservas' ou 'pedidos').
  * @returns {React.JSX.Element} Painel administrativo com o conteúdo dinâmico.
  */
 function Dashboard({ activeTab = 'dashboard' }) {
@@ -88,7 +89,17 @@ function Dashboard({ activeTab = 'dashboard' }) {
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>
             Reservas
           </a>
-          <a href="#pedidos" className="nav-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>Pedidos</a>
+          <a
+            href="/pedidos"
+            className={`nav-item ${activeTab === 'pedidos' ? 'active' : ''}`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/pedidos');
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
+            Pedidos
+          </a>
           {isAdmin && (<a href="#relatorios" className="nav-item"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>Relatórios</a>)}
         </nav>
         <div className="sidebar-footer">
@@ -98,7 +109,11 @@ function Dashboard({ activeTab = 'dashboard' }) {
 
       <main className="main-content">
         <header className="top-bar">
-          <h1>{activeTab === 'reservas' ? 'Gerenciamento de Reservas' : 'Dashboard'}</h1>
+          <h1>
+            {activeTab === 'reservas' ? 'Gerenciamento de Reservas'
+              : activeTab === 'pedidos' ? 'Gerenciamento de Pedidos'
+              : 'Dashboard'}
+          </h1>
           <div className="user-profile">
             <span className="notification-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3c.2.6.8 1 1.7 1s1.5-.4 1.7-1" /></svg><span className="badge">3</span></span>
             <div className="user-info">
@@ -175,10 +190,12 @@ function Dashboard({ activeTab = 'dashboard' }) {
               </div>
             </section>
           </>
-        ) : (
+        ) : activeTab === 'reservas' ? (
           <div className="bg-white p-4 rounded-4 shadow-sm" style={{ flex: 1, overflowY: 'auto' }}>
             <GerenciadorReservas modoPublico={false} />
           </div>
+        ) : (
+          <GerenciadorPedidos />
         )}
       </main>
     </div>
