@@ -4,9 +4,13 @@ import './Dashboard.css';
 import GerenciadorReservas from '../components/GerenciadorReservas';
 import GerenciadorPedidos from '../components/GerenciadorPedidos';
 import GerenciadorRelatorios from '../components/GerenciadorRelatorios';
+import GraficoLinhaPedidos from '../components/GraficoLinhaPedidos';
+import GraficoBarraReservas from '../components/GraficoBarraReservas';
 import { ReservaServico } from '../servicos/ReservaServico';
+import { PedidoServico } from '../servicos/PedidoServico';
 
 const servicoReservas = new ReservaServico();
+const servicoPedidos = new PedidoServico();
 
 /**
  * @function Dashboard
@@ -23,14 +27,17 @@ function Dashboard({ activeTab = 'dashboard' }) {
 
   const [reservas, setReservas] = useState([]);
   const [mesas, setMesas] = useState([]);
+  const [pedidos, setPedidos] = useState([]);
 
   useEffect(() => {
     const carregarDadosDashboard = async () => {
       try {
         const listaReservas = await servicoReservas.obterTodasReservas();
         const listaMesas = await servicoReservas.obterTodasMesas();
+        const listaPedidos = await servicoPedidos.obterTodosPedidos();
         setReservas(listaReservas);
         setMesas(listaMesas);
+        setPedidos(listaPedidos);
       } catch (e) {
         console.error("Erro ao carregar dados no dashboard:", e);
       }
@@ -48,11 +55,94 @@ function Dashboard({ activeTab = 'dashboard' }) {
   const totalReservas = reservas.length.toString();
   const totalMesasOcupadas = mesas.filter(m => m.status === 'Ocupada' || m.status === 'Reservada').length.toString();
 
+  // Obtém a string do dia de hoje no formato YYYY-MM-DD
+  const hoje = new Date();
+  hoje.setMinutes(hoje.getMinutes() - hoje.getTimezoneOffset());
+  const hojeStr = hoje.toISOString().slice(0, 10);
+
+  // Filtra a quantidade de pedidos abertos ou finalizados na data de hoje
+  const pedidosDoDia = pedidos.filter(p => p.dataAbertura?.startsWith(hojeStr)).length.toString();
+
+  // Faturamento total dos pedidos entregues
+  const faturamentoTotalVal = pedidos
+    .filter(p => p.status === 'Entregue')
+    .reduce((acumulador, pedido) => acumulador + (pedido.valorTotal || 0), 0);
+  const faturamentoExibido = `R$ ${faturamentoTotalVal.toFixed(2).replace('.', ',')}`;
+
+  /**
+   * @function obterDadosPedidosPorDia
+   * @description Agrupa e formata a quantidade de pedidos dos últimos 7 dias.
+   * @returns {Array<Object>} Lista de objetos estruturada para o gráfico de linha.
+   */
+  const obterDadosPedidosPorDia = () => {
+    const contagem = {};
+    const dataAtual = new Date();
+    
+    // Inicializa a contagem dos últimos 7 dias com zero para plotagem correta
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(dataAtual);
+      d.setDate(dataAtual.getDate() - i);
+      const dataStr = d.toISOString().slice(0, 10);
+      contagem[dataStr] = 0;
+    }
+
+    pedidos.forEach(p => {
+      if (p.dataAbertura) {
+        const data = p.dataAbertura.slice(0, 10);
+        if (contagem[data] !== undefined) {
+          contagem[data] += 1;
+        }
+      }
+    });
+
+    const chavesOrdenadas = Object.keys(contagem).sort();
+    return chavesOrdenadas.map(chave => {
+      const [ano, mes, dia] = chave.split('-');
+      return {
+        rotulo: `${dia}/${mes}`,
+        valor: contagem[chave]
+      };
+    });
+  };
+
+  /**
+   * @function obterDadosReservasPorPeriodo
+   * @description Agrupa a quantidade de reservas nos períodos da manhã/almoço, tarde e noite.
+   * @returns {Array<Object>} Lista de objetos estruturada para o gráfico de barras.
+   */
+  const obterDadosReservasPorPeriodo = () => {
+    const periodos = {
+      'Almoço (10h-15h)': 0,
+      'Tarde (15h-18h)': 0,
+      'Jantar (18h-22h)': 0
+    };
+
+    reservas.forEach(r => {
+      if (r.dataHora) {
+        const dataObj = new Date(r.dataHora);
+        const horas = dataObj.getHours();
+
+        if (horas >= 10 && horas < 15) {
+          periodos['Almoço (10h-15h)'] += 1;
+        } else if (horas >= 15 && horas < 18) {
+          periodos['Tarde (15h-18h)'] += 1;
+        } else if (horas >= 18 && horas <= 22) {
+          periodos['Jantar (18h-22h)'] += 1;
+        }
+      }
+    });
+
+    return Object.entries(periodos).map(([rotulo, valor]) => ({
+      rotulo,
+      valor
+    }));
+  };
+
   const cardsData = [
     { id: 1, title: 'Total de Reservas', value: totalReservas, color: '#ff6e35', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>) },
-    { id: 2, title: 'Pedidos do Dia', value: '3', color: '#4caf50', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>) },
+    { id: 2, title: 'Pedidos do Dia', value: pedidosDoDia, color: '#4caf50', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>) },
     { id: 3, title: 'Mesas Ocupadas/Reservadas', value: totalMesasOcupadas, color: '#2196f3', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 18v3" /><path d="M20 18v3" /><path d="M19 14v4" /><path d="M5 14v4" /><path d="M3 8h18v6H3z" /></svg>) },
-    ...(isAdmin ? [{ id: 4, title: 'Faturamento', value: 'R$ 459,50', color: '#9c27b0', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>) }] : []),
+    ...(isAdmin ? [{ id: 4, title: 'Faturamento', value: faturamentoExibido, color: '#9c27b0', icon: (<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>) }] : []),
   ];
 
   return (
@@ -129,7 +219,7 @@ function Dashboard({ activeTab = 'dashboard' }) {
               : 'Dashboard'}
           </h1>
           <div className="user-profile">
-            <span className="notification-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3c.2.6.8 1 1.7 1s1.5-.4 1.7-1" /></svg><span className="badge">3</span></span>
+            <span className="notification-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg><span className="badge">3</span></span>
             <div className="user-info">
               <p className="user-name">{user.perfil === 'ADMIN' ? 'Admin' : 'Atendente'}</p>
               <p className="user-role">{user.perfil}</p>
@@ -151,11 +241,15 @@ function Dashboard({ activeTab = 'dashboard' }) {
             <section className="charts-grid">
               <div className="chart-card">
                 <h3>Pedidos por Dia</h3>
-                <div className="chart-placeholder"><p className="placeholder-text">Gráfico de Linhas</p></div>
+                <div style={{ height: '240px' }}>
+                  <GraficoLinhaPedidos dados={obterDadosPedidosPorDia()} />
+                </div>
               </div>
               <div className="chart-card">
                 <h3>Reservas por Período</h3>
-                <div className="chart-placeholder"><p className="placeholder-text">Gráfico de Barras</p></div>
+                <div style={{ height: '240px' }}>
+                  <GraficoBarraReservas dados={obterDadosReservasPorPeriodo()} />
+                </div>
               </div>
             </section>
 
